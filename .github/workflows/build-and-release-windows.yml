@@ -1,16 +1,16 @@
-name: Build and Release Windows
+name: Manual Release Build
 
 on:
   workflow_dispatch:
     inputs:
-      release-tag:
-        description: 'Release tag (e.g. v1.2.3)'
+      version:
+        description: '发布版本号 (例如: v1.0.0)'
         required: true
         type: string
 
 jobs:
-  build:
-    name: Build - ${{ matrix.platform.os-name }}
+  release:
+    name: Release - ${{ matrix.platform.os-name }}
     strategy:
       matrix:
         platform:
@@ -21,12 +21,12 @@ jobs:
           - os-name: Windows-aarch64
             runs-on: windows-11-arm
             target: aarch64-pc-windows-msvc
-
+    
     runs-on: ${{ matrix.platform.runs-on }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+      
       - name: Build binary
         uses: houseabsolute/actions-rust-cross@v1
         with:
@@ -35,12 +35,21 @@ jobs:
           args: "--locked --release"
           strip: true
 
-      - name: Upload to Release
-        uses: ncipollo/release-action@v1
+      - name: Package executable
+        shell: pwsh
+        run: |
+          $zipName = "binwalk-${{ inputs.version }}-${{ matrix.platform.target }}.zip"
+          Compress-Archive -Path "target/${{ matrix.platform.target }}/release/binwalk.exe" -DestinationPath $zipName
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ inputs.release-tag }}
-          name: ${{ inputs.release-tag }}
-          allowUpdates: true
-          generateReleaseNotes: true
-          artifacts: "target/${{ matrix.platform.target }}/release/binwalk.exe"
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          files: binwalk-${{ inputs.version }}-${{ matrix.platform.target }}.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
