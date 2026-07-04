@@ -8,6 +8,10 @@ on:
         required: true
         type: string
 
+# 授予工作流创建 Release 和写入代码库的权限
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Release - ${{ matrix.platform.os-name }}
